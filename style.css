@@ -2,7 +2,7 @@
   position: absolute;
   padding: 1%;
   font-family: "Roboto";
-  display: flex;
+  display: none;
   flex-direction: column;
   width: 900px;
   border: 2px solid black;
@@ -26,12 +26,10 @@
   justify-content: space-between;
 }
 
-/* Блок для заголовка формы */
 .form__title {
   font-size: 20px;
 }
 
-/* Кнопка сохранения */
 .form__button {
   background-color: #63c816;
   color: white;
@@ -57,10 +55,6 @@
   accent-color: #2196f3;
 }
 
-/* При желании можно добавить сюда или в calendar.js дополнительные стили. */
-/* Но основная логика календаря уже внедрена прям в calendar.js. */
-
-/* Дополнительные стили для вывода информации о записи */
 .record-info {
   width: 45%;
   border: 1px solid #ddd;
@@ -89,4 +83,29 @@
   margin-bottom: 3px;
 }
 
-/* Конец файла style.css */
+.masterIdPrompt {
+  display: flex;
+  width: 500px;
+}
+
+[class*="__button"] {
+  background-color: #63c816;
+  color: white;
+  padding: 10px;
+  width: 12%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  border-radius: 10px;
+  font-size: 18px;
+  margin: 0 auto;
+  cursor: pointer;
+}
+
+[class*="__title"] {
+  font-size: 20px;
+}
+
+.masterIdPrompt__input {
+  font-size: 20px;
+}
