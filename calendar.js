@@ -1,10 +1,10 @@
 function createCalendar({
   container,
   initialDate = new Date(),
-  // NEW: массивы дат (строк формата YYYY-MM-DD), чтобы их окрашивать по-новому
+
   masterDays = [],
   recordsDays = [],
-  // СТАРОЕ (оставляем, но можем не использовать):
+
   selectedDates = [],
   showHeader = true,
   showNav = true,
@@ -13,7 +13,6 @@ function createCalendar({
   height = "auto",
   tdPadding = "12px",
 }) {
-  // единая функция-ключ для дат
   function getDateKey(date) {
     const y = date.getFullYear();
     const m = String(date.getMonth() + 1).padStart(2, "0");
@@ -21,18 +20,13 @@ function createCalendar({
     return `${y}-${m}-${d}`;
   }
 
-  // NEW: инициализируем новое состояние:
-  // masterDaysSet хранит ключи дат, которые мастер отметил как занятые (но не в records).
-  // recordsDaysSet хранит ключи дат, у которых есть запись (берём из records_array).
   const state = {
     currentDate: new Date(initialDate),
-    // СТАРОЕ (оставляем, но не используем в новой логике)
-    // selected: new Set(selectedDates.map(getDateKey)),
-    masterDaysSet: new Set(masterDays), // ожидаем, что masterDays уже в формате "YYYY-MM-DD"
-    recordsDaysSet: new Set(recordsDays), // тоже строки "YYYY-MM-DD"
+
+    masterDaysSet: new Set(masterDays),
+    recordsDaysSet: new Set(recordsDays),
   };
 
-  // ----- Инъекция стилей (один раз) -----
   const STYLE_ID = "calendar-styles";
   if (!document.getElementById(STYLE_ID)) {
     const style = document.createElement("style");
@@ -102,7 +96,7 @@ function createCalendar({
       background: var(--day-hover);
   }
 
-  /* СТАРОЕ (selected) - оставляем, но можем не использовать */
+  
   .calendar-day.selected {
       background: var(--selected-bg);
       color: var(--selected-text);
@@ -115,19 +109,19 @@ function createCalendar({
       color: var(--disabled-text);
   }
 
-  /* NEW: класс для выходных / дат с записями */
+  
   .weekend, .recorded {
-      background: #f44336 !important; /* красный цвет */
+      background: #f44336 !important; 
       color: #fff !important;
       cursor: default !important;
   }
 
-  /* NEW: класс для дней мастера (занятые мастером, но не в records) */
+  
   .master-day {
       background: green;
       color: #fff;
   }
-  /* NEW: при наведении делаем белым, как в требовании */
+  
   .master-day:hover {
       background: #fff !important;
       color: #333 !important;
@@ -143,11 +137,9 @@ function createCalendar({
     document.head.appendChild(style);
   }
 
-  // ----- Применение размеров -----
   container.style.width = width;
   container.style.height = height;
 
-  // ----- Вспомогательные функции -----
   const isWeekend = (date) => date.getDay() === 0 || date.getDay() === 6;
   const getMonthYearString = () =>
     state.currentDate.toLocaleString("ru-RU", {
@@ -162,7 +154,7 @@ function createCalendar({
       state.currentDate.getMonth(),
       1
     );
-    // В оригинале сдвиг на понедельник
+
     const shift = (first.getDay() + 6) % 7;
     const curr = new Date(first);
     curr.setDate(curr.getDate() - shift);
@@ -186,7 +178,6 @@ function createCalendar({
     date.getMonth() === state.currentDate.getMonth();
   const isToday = (date) => date.toDateString() === new Date().toDateString();
 
-  // СТАРОЕ markWeekends - оставим закомментированным, чтобы не ломать:
   /*
   const markWeekends = () => {
     getWeeks()
@@ -197,14 +188,12 @@ function createCalendar({
   };
   */
 
-  // ----- Отрисовка -----
   const render = () => {
-    // СТАРОЕ (selected):
     /*
     state.selected = new Set(
       [...selectedDays].map((d) => {
         if (d instanceof Date) return getDateKey(d);
-        return d; // если уже ключ
+        return d; 
       })
     );
     markWeekends();
@@ -282,43 +271,36 @@ function createCalendar({
       td.classList.add("today");
     }
 
-    // NEW: Если это суббота/воскресенье - красим в красный, не кликаем
     if (isWeekend(date)) {
       td.classList.add("weekend");
       row.appendChild(td);
       return;
     }
 
-    // NEW: Если это дата из recordsDaysSet - красим в красный, но теперь отслеживаем клик
     const key = getDateKey(date);
     if (state.recordsDaysSet.has(key)) {
       td.classList.add("recorded");
-      // Добавляем обработчик отдельных записей (т.е. есть "record")
+
       td.addEventListener("click", () => handleRecordedDateClick(date));
       row.appendChild(td);
       return;
     }
 
-    // NEW: Если это "мастер-день", красим в зелёный
     if (state.masterDaysSet.has(key)) {
       td.classList.add("master-day");
     }
 
-    // Далее вешаем обработчик, чтобы toggl-ить master-day
     td.addEventListener("click", () => handleDateClick(date));
 
     row.appendChild(td);
   }
 
-  // Обработчик клика по белому или зелёному дню
   const handleDateClick = (date) => {
     const key = getDateKey(date);
 
     if (state.masterDaysSet.has(key)) {
-      // Если был мастер-день, делаем его обычным
       state.masterDaysSet.delete(key);
     } else {
-      // Если был обычным, делаем мастер-день
       state.masterDaysSet.add(key);
     }
     if (onDateSelect) {
@@ -326,25 +308,21 @@ function createCalendar({
         render,
         date,
         masterDaysSet: state.masterDaysSet,
-        isRecorded: false, // явно указываем, что это не recorded
+        isRecorded: false,
       });
     }
     render();
   };
 
-  // Доп. обработчик для дат с записью
   const handleRecordedDateClick = (date) => {
     if (onDateSelect) {
       onDateSelect({
         render,
         date,
         masterDaysSet: state.masterDaysSet,
-        isRecorded: true, // флаг, что это запись
+        isRecorded: true,
       });
     }
-    // Обратите внимание, что здесь мы НЕ меняем masterDaysSet,
-    // т.к. это день уже занят записью (records), менять нельзя.
-    // Перерисовка нам тоже не нужна, так как ничего не меняется визуально.
   };
 
   const navigate = (delta) => {
@@ -352,12 +330,9 @@ function createCalendar({
     render();
   };
 
-  // Первый рендер
   render();
 
-  // Публичный API
   return {
-    // СТАРОЕ:
     /*
     getSelectedDates: () =>
       Array.from(state.selected).map((k) => {
@@ -365,7 +340,7 @@ function createCalendar({
         return new Date(+y, +m - 1, +d);
       }),
     */
-    // NEW: получить текущее множество дат мастера
+
     getMasterDays: () => new Set(state.masterDaysSet),
     setDate: (date) => {
       state.currentDate = new Date(date);
