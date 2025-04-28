@@ -4,6 +4,7 @@ const calendarContainer = document.querySelector(".calendarContainer");
 const recordInfoContainer = document.querySelector(".record-info");
 const masterIdPromptButton = document.querySelector(".masterIdPrompt__button");
 (async () => {
+  await new Promise((r) => setTimeout(r, 500));
   const url = new URL(window.location.href);
   employeeId = Number(url.searchParams.get("masterId"));
   console.log(employeeId);
