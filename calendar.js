@@ -4,6 +4,7 @@ function createCalendar({
 
   masterDays = [],
   recordsDays = [],
+  notWeekends = [],
 
   selectedDates = [],
   showHeader = true,
@@ -25,6 +26,7 @@ function createCalendar({
 
     masterDaysSet: new Set(masterDays),
     recordsDaysSet: new Set(recordsDays),
+    notWeekendsSet: new Set(notWeekends),
   };
 
   const STYLE_ID = "calendar-styles";
@@ -110,7 +112,7 @@ function createCalendar({
   }
 
   
-  .weekend, .recorded {
+  .recorded {
       background: #f44336 !important; 
       color: #fff !important;
       cursor: default !important;
@@ -224,10 +226,10 @@ function createCalendar({
     const nav = document.createElement("div");
     nav.className = "calendar-nav";
     const prev = document.createElement("button");
-    prev.innerHTML = "&lt;";
+    prev.innerHTML = "<";
     prev.addEventListener("click", () => navigate(-1));
     const next = document.createElement("button");
-    next.innerHTML = "&gt;";
+    next.innerHTML = ">";
     next.addEventListener("click", () => navigate(1));
     nav.append(prev, next);
     return nav;
@@ -271,56 +273,34 @@ function createCalendar({
       td.classList.add("today");
     }
 
-    if (isWeekend(date)) {
-      td.classList.add("weekend");
-      row.appendChild(td);
-      return;
-    }
-
     const key = getDateKey(date);
-    if (state.recordsDaysSet.has(key)) {
-      td.classList.add("recorded");
+    const isWeekendDay = isWeekend(date);
+    const isNotWeekend = state.notWeekendsSet.has(key);
 
-      td.addEventListener("click", () => handleRecordedDateClick(date));
-      row.appendChild(td);
-      return;
-    }
-
-    if (state.masterDaysSet.has(key)) {
+    if (isWeekendDay && !isNotWeekend) {
+      td.classList.add("master-day");
+    } else if (state.masterDaysSet.has(key)) {
       td.classList.add("master-day");
     }
 
-    td.addEventListener("click", () => handleDateClick(date));
+    if (state.recordsDaysSet.has(key)) {
+      td.classList.add("recorded");
+    }
 
+    td.addEventListener("click", () => handleDateClick(date));
     row.appendChild(td);
   }
 
   const handleDateClick = (date) => {
     const key = getDateKey(date);
 
-    if (state.masterDaysSet.has(key)) {
-      state.masterDaysSet.delete(key);
-    } else {
-      state.masterDaysSet.add(key);
-    }
     if (onDateSelect) {
       onDateSelect({
         render,
         date,
         masterDaysSet: state.masterDaysSet,
-        isRecorded: false,
-      });
-    }
-    render();
-  };
-
-  const handleRecordedDateClick = (date) => {
-    if (onDateSelect) {
-      onDateSelect({
-        render,
-        date,
-        masterDaysSet: state.masterDaysSet,
-        isRecorded: true,
+        notWeekendsSet: state.notWeekendsSet,
+        isRecorded: state.recordsDaysSet.has(key),
       });
     }
   };
@@ -342,6 +322,7 @@ function createCalendar({
     */
 
     getMasterDays: () => new Set(state.masterDaysSet),
+    getNotWeekends: () => new Set(state.notWeekendsSet),
     setDate: (date) => {
       state.currentDate = new Date(date);
       render();
