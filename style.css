@@ -110,63 +110,47 @@
   font-size: 20px;
 }
 
-@media (max-width: 1200px) {
-  .formWrapper {
-    width: 80%;
-  }
+.day-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
 
-@media (max-width: 900px) {
-  .formWrapper {
-    width: 90%;
-  }
-
-  .form__fields {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .calendarContainer,
-  .record-info {
-    width: 100% !important;
-    max-width: 100%;
-  }
+.slots-container {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
 }
 
-@media (max-width: 600px) {
-  .formWrapper {
-    width: 95%;
-    padding: 2%;
-  }
-
-  .form__title {
-    font-size: 18px;
-    text-align: center;
-  }
-
-  .form__button {
-    width: auto;
-    min-width: 120px;
-    font-size: 16px;
-  }
-
-  .masterIdPrompt__input {
-    font-size: 16px;
-  }
+.slot-block {
+  display: flex;
+  gap: 5px;
 }
 
-@media (max-width: 480px) {
-  .formWrapper {
-    padding: 3%;
-  }
+.slot-list {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
 
-  .masterIdPrompt {
-    flex-direction: column;
-    width: 90%;
-    gap: 10px;
-  }
+.slot-item {
+  cursor: pointer;
+  padding: 5px;
+  background: #e0e0e0;
+  border-radius: 4px;
+}
 
-  .masterIdPrompt__title {
-    text-align: center;
-  }
+.slot-item:hover {
+  background: #d0d0d0;
+}
+
+.slot-save__button,
+.slot-plus__button {
+  padding: 5px;
+  font-size: 14px;
+  width: 90%;
+}
+
+.slot-toggle {
+  accent-color: #2196f3;
 }
