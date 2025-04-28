@@ -3,12 +3,11 @@ const formWrapper = document.querySelector(".form__fields");
 const calendarContainer = document.querySelector(".calendarContainer");
 const recordInfoContainer = document.querySelector(".record-info");
 const masterIdPromptButton = document.querySelector(".masterIdPrompt__button");
-masterIdPromptButton.addEventListener("click", async () => {
-  employeeId = Number(document.querySelector(".masterIdPrompt__input").value);
-  document.querySelector(".masterIdPrompt").style.display = "none";
-  document.querySelector(".formWrapper").style.display = "flex";
+(async () => {
+  const url = window.location.href;
+  employeeId = Number(url.searchParams.get("masterId"));
   await main();
-});
+})();
 
 const supabaseUrl = "https://eqznnarpanrfzwzjgksq.supabase.co";
 const supabaseKey =
@@ -17,8 +16,9 @@ const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
 
 let choosedDay = null;
 var employeeId;
-let employeeBusyDates = [];
-let employeeRecords = [];
+let employeeMasterDays = [];
+let employeeSlots = {};
+let employeeNotWeekends = [];
 let recordDatesArray = [];
 
 function getDateKey(date) {
@@ -33,17 +33,15 @@ function showGreeting(name) {
   title.textContent = `Добрый день, ${name}!`;
 }
 
-async function handleShowRecordInfo(clickedDate) {
-  const dateKey = getDateKey(clickedDate);
-
+async function handleShowRecordInfo(dateKey, recordId) {
   recordInfoContainer.innerHTML = "";
 
   try {
-    const { data: recordsData, error } = await supabase
+    const { data: recordData, error } = await supabase
       .from("records")
       .select("*")
-      .eq("employees_id", employeeId)
-      .eq("date", dateKey);
+      .eq("id", recordId)
+      .single();
 
     if (error) {
       console.error("Ошибка при запросе информации о записи:", error);
@@ -52,49 +50,47 @@ async function handleShowRecordInfo(clickedDate) {
       return;
     }
 
-    if (!recordsData || recordsData.length === 0) {
-      recordInfoContainer.textContent = "Нет записей на эту дату.";
+    if (!recordData) {
+      recordInfoContainer.textContent = "Запись не найдена.";
       return;
     }
 
-    for (let record of recordsData) {
-      const recordDiv = document.createElement("div");
-      recordDiv.className = "recordItem";
-      recordDiv.innerHTML = `<h4>Запись: ${record.date}</h4>`;
+    const recordDiv = document.createElement("div");
+    recordDiv.className = "recordItem";
+    recordDiv.innerHTML = `<h4>Запись: ${recordData.date}</h4>`;
 
-      let jsonData = record.record_info;
-      if (typeof jsonData === "string") {
-        try {
-          jsonData = JSON.parse(jsonData);
-        } catch (err) {
-          console.warn("Невозможно распарсить record_info:", err);
-        }
+    let jsonData = recordData.record_info;
+    if (typeof jsonData === "string") {
+      try {
+        jsonData = JSON.parse(jsonData);
+      } catch (err) {
+        console.warn("Невозможно распарсить record_info:", err);
       }
-
-      const fields = (await supabase.from("Fields").select("*")).data;
-
-      const fieldsNameId = {};
-
-      for (let field of fields) {
-        fieldsNameId[field.id] = field.name;
-      }
-
-      if (jsonData && typeof jsonData === "object") {
-        const ul = document.createElement("ul");
-        Object.entries(jsonData).forEach(([fieldKey, fieldValue]) => {
-          const li = document.createElement("li");
-          li.textContent = `${fieldsNameId[fieldKey]}: ${fieldValue}`;
-          ul.appendChild(li);
-        });
-        recordDiv.appendChild(ul);
-      } else {
-        const p = document.createElement("p");
-        p.textContent = JSON.stringify(jsonData);
-        recordDiv.appendChild(p);
-      }
-
-      recordInfoContainer.appendChild(recordDiv);
     }
+
+    const fields = (await supabase.from("Fields").select("*")).data;
+
+    const fieldsNameId = {};
+
+    for (let field of fields) {
+      fieldsNameId[field.id] = field.name;
+    }
+
+    if (jsonData && typeof jsonData === "object") {
+      const ul = document.createElement("ul");
+      Object.entries(jsonData).forEach(([fieldKey, fieldValue]) => {
+        const li = document.createElement("li");
+        li.textContent = `${fieldsNameId[fieldKey]}: ${fieldValue}`;
+        ul.appendChild(li);
+      });
+      recordDiv.appendChild(ul);
+    } else {
+      const p = document.createElement("p");
+      p.textContent = JSON.stringify(jsonData);
+      recordDiv.appendChild(p);
+    }
+
+    recordInfoContainer.appendChild(recordDiv);
   } catch (err) {
     console.error("Ошибка:", err);
   }
@@ -114,69 +110,185 @@ async function main() {
   }
   const employeeInfo = employeeData[0];
 
-  employeeBusyDates = employeeInfo["busy_dates_array"] || [];
-  employeeRecords = employeeInfo["records_array"] || [];
+  employeeMasterDays = employeeInfo["busy_dates_array"] || [];
+  employeeSlots = employeeInfo["slots"] || {};
+  employeeNotWeekends = employeeInfo["not_weekends"] || [];
 
   const employeeName = employeeInfo["name"];
   showGreeting(employeeName);
 
-  if (employeeRecords.length > 0) {
-    const { data: recordsData, error: recordsError } = await supabase
-      .from("records")
-      .select("*")
-      .in("id", employeeRecords);
-    if (recordsError) {
-      console.error("Ошибка при получении данных из records:", recordsError);
-    } else {
-      recordDatesArray = recordsData.map((record) => record.date);
+  recordDatesArray = [];
+  for (const [date, slots] of Object.entries(employeeSlots)) {
+    if (slots.some((slot) => slot[2])) {
+      recordDatesArray.push(date);
     }
   }
-
-  const masterDaysArray = employeeBusyDates.filter(
-    (dateStr) => !recordDatesArray.includes(dateStr)
-  );
 
   const calendar = createCalendar({
     container: calendarContainer,
     initialDate: new Date(),
-    masterDays: masterDaysArray,
+    masterDays: employeeMasterDays,
     recordsDays: recordDatesArray,
-    onDateSelect({ render, date, masterDaysSet, isRecorded }) {
+    notWeekends: employeeNotWeekends,
+    onDateSelect({ render, date, masterDaysSet, notWeekendsSet, isRecorded }) {
       choosedDay = new Date(
         date.getFullYear(),
         date.getMonth(),
         date.getDate()
       );
+      const dateKey = getDateKey(choosedDay);
 
       if (isRecorded) {
-        handleShowRecordInfo(choosedDay);
+        recordInfoContainer.innerHTML = "";
+        recordInfoContainer.append(
+          showDayEditor(dateKey, masterDaysSet, notWeekendsSet)
+        );
+        recordInfoContainer.append(showRecordedSlots(dateKey));
+        document.querySelector(".slot-toggle").remove();
       } else {
+        recordInfoContainer.innerHTML = "";
+        recordInfoContainer.appendChild(
+          showDayEditor(dateKey, masterDaysSet, notWeekendsSet)
+        );
       }
     },
     width: "400px",
     tdPadding: "12px",
   });
 
-  const saveButton = document.querySelector(".form__button");
-  saveButton.addEventListener("click", async () => {
-    const masterDaysSet = calendar.getMasterDays();
+  function showRecordedSlots(dateKey) {
+    const slots = employeeSlots[dateKey] || [];
+    const recordedSlots = slots.filter((slot) => slot[2]);
 
-    const combinedSet = new Set([...masterDaysSet, ...employeeBusyDates]);
-    const newBusyDatesArray = Array.from(combinedSet);
-
-    newBusyDatesArray.sort();
-
-    const { data, error } = await supabase
-      .from("Employees")
-      .update({ busy_dates_array: newBusyDatesArray })
-      .eq("id", employeeId)
-      .select();
-
-    if (error) {
-      console.error("Ошибка при обновлении busy_dates_array:", error);
-      alert("Ошибка при сохранении данных!");
-    } else {
-      alert("Изменения успешно сохранены!");
+    if (recordedSlots.length === 0) {
+      recordInfoContainer.textContent = "Нет записей на эту дату.";
+      return;
     }
-  });
+
+    const slotList = document.createElement("div");
+    slotList.className = "slot-list";
+
+    recordedSlots.forEach((slot) => {
+      const [start, end, isBusy, recordId] = slot;
+      const slotDiv = document.createElement("div");
+      slotDiv.className = "slot-item";
+      slotDiv.textContent = `Слот ${start} - ${end}`;
+      slotDiv.addEventListener("click", () => {
+        handleShowRecordInfo(dateKey, recordId);
+      });
+      slotList.appendChild(slotDiv);
+    });
+
+    return slotList;
+  }
+
+  function showDayEditor(dateKey, masterDaysSet, notWeekendsSet) {
+    const isMasterDay = masterDaysSet.has(dateKey);
+    const isWeekend =
+      new Date(dateKey).getDay() === 0 || new Date(dateKey).getDay() === 6;
+    const isNotWeekend = notWeekendsSet.has(dateKey);
+
+    const editorDiv = document.createElement("div");
+    editorDiv.className = "day-editor";
+
+    const toggleLabel = document.createElement("label");
+    toggleLabel.textContent = "Выходной";
+    toggleLabel.classList.add("slot-toggle");
+    const toggleInput = document.createElement("input");
+    toggleInput.type = "checkbox";
+    toggleInput.checked = isMasterDay || (isWeekend && !isNotWeekend);
+    toggleInput.addEventListener("change", () => {
+      if (toggleInput.checked) {
+        if (isWeekend) {
+          notWeekendsSet.delete(dateKey);
+        } else {
+          masterDaysSet.add(dateKey);
+        }
+      } else {
+        if (isWeekend) {
+          notWeekendsSet.add(dateKey);
+        } else {
+          masterDaysSet.delete(dateKey);
+        }
+      }
+    });
+    toggleLabel.appendChild(toggleInput);
+    editorDiv.appendChild(toggleLabel);
+
+    const slotsContainer = document.createElement("div");
+    slotsContainer.className = "slots-container";
+
+    const addSlotBlock = () => {
+      const slotDiv = document.createElement("div");
+      slotDiv.className = "slot-block";
+
+      const startInput = document.createElement("input");
+      startInput.type = "time";
+      startInput.className = "slot-start";
+
+      const endInput = document.createElement("input");
+      endInput.type = "time";
+      endInput.className = "slot-end";
+
+      slotDiv.appendChild(startInput);
+      slotDiv.appendChild(endInput);
+
+      slotsContainer.appendChild(slotDiv);
+    };
+
+    const addSlotButton = document.createElement("button");
+    addSlotButton.classList.add("slot-plus__button");
+    addSlotButton.textContent = "+";
+    addSlotButton.addEventListener("click", addSlotBlock);
+
+    const saveButton = document.createElement("button");
+    saveButton.classList.add("slot-save__button");
+    saveButton.textContent = "Сохранить";
+    saveButton.addEventListener("click", async () => {
+      const slots = [];
+      const slotBlocks = slotsContainer.querySelectorAll(".slot-block");
+      slotBlocks.forEach((block) => {
+        const start = block.querySelector(".slot-start").value;
+        const end = block.querySelector(".slot-end").value;
+        if (start && end) {
+          slots.push([start, end, false, -1]);
+        }
+      });
+
+      employeeSlots[dateKey] = slots;
+
+      const { data, error } = await supabase
+        .from("Employees")
+        .update({
+          slots: employeeSlots,
+          busy_dates_array: Array.from(masterDaysSet),
+          not_weekends: Array.from(notWeekendsSet),
+        })
+        .eq("id", employeeId)
+        .select();
+
+      if (error) {
+        console.error("Ошибка при обновлении данных:", error);
+        alert("Ошибка при сохранении данных!");
+      } else {
+        alert("Изменения успешно сохранены!");
+
+        calendar.setDate(new Date());
+      }
+    });
+
+    const existingSlots = employeeSlots[dateKey] || [];
+    existingSlots.forEach((slot) => {
+      addSlotBlock();
+      const lastSlotBlock = slotsContainer.lastChild;
+      lastSlotBlock.querySelector(".slot-start").value = slot[0];
+      lastSlotBlock.querySelector(".slot-end").value = slot[1];
+    });
+
+    editorDiv.appendChild(slotsContainer);
+    editorDiv.appendChild(addSlotButton);
+    editorDiv.appendChild(saveButton);
+
+    return editorDiv;
+  }
 }
