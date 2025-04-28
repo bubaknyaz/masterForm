@@ -6,7 +6,7 @@ const masterIdPromptButton = document.querySelector(".masterIdPrompt__button");
 (async () => {
   const url = new URL(window.location.href);
   employeeId = Number(url.searchParams.get("masterId"));
-  console.log(employeedId);
+  console.log(employeeId);
   await main();
 })();
 
