@@ -4,7 +4,7 @@ const calendarContainer = document.querySelector(".calendarContainer");
 const recordInfoContainer = document.querySelector(".record-info");
 const masterIdPromptButton = document.querySelector(".masterIdPrompt__button");
 (async () => {
-  const url = window.location.href;
+  const url = new URL(window.location.href);
   employeeId = Number(url.searchParams.get("masterId"));
   await main();
 })();
