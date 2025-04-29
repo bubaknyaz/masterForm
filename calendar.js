@@ -1,6 +1,11 @@
 function createCalendar({
   container,
   initialDate = new Date(),
+
+  masterDays = [],
+  recordsDays = [],
+  notWeekends = [],
+
   selectedDates = [],
   showHeader = true,
   showNav = true,
@@ -18,7 +23,10 @@ function createCalendar({
 
   const state = {
     currentDate: new Date(initialDate),
-    selected: new Set(selectedDates.map(getDateKey)),
+
+    masterDaysSet: new Set(masterDays),
+    recordsDaysSet: new Set(recordsDays),
+    notWeekendsSet: new Set(notWeekends),
   };
 
   const STYLE_ID = "calendar-styles";
@@ -43,8 +51,8 @@ function createCalendar({
       box-shadow: 0 2px 10px rgba(0,0,0,0.1);
       background: var(--calendar-bg);
       color: var(--calendar-text);
-      width: 100%;              
-      box-sizing: border-box;   
+      width: 100%;
+      box-sizing: border-box;
   }
   .calendar-header {
       display: flex;
@@ -68,14 +76,12 @@ function createCalendar({
       background: rgba(255,255,255,0.1);
   }
   .calendar-table {
-      width: 100%;              
+      width: 100%;
       border-collapse: collapse;
-       
   }
   .calendar-table th,
   .calendar-table td {
       text-align: center;
-      
       max-width: ${tdPadding};
       padding: 1.5% 0;
       border: 1px solid #ddd;
@@ -91,16 +97,38 @@ function createCalendar({
   .calendar-day:hover {
       background: var(--day-hover);
   }
+
+  
   .calendar-day.selected {
       background: var(--selected-bg);
       color: var(--selected-text);
   }
+
   .calendar-day.today {
       background: var(--today-bg);
   }
   .calendar-day.other-month {
       color: var(--disabled-text);
   }
+
+  
+  .recorded {
+      background: #f44336 !important; 
+      color: #fff !important;
+      cursor: default !important;
+  }
+
+  
+  .master-day {
+      background: green;
+      color: #fff;
+  }
+  
+  .master-day:hover {
+      background: #fff !important;
+      color: #333 !important;
+  }
+
   @media (max-width: 480px) {
       .calendar-table th,
       .calendar-table td {
@@ -129,6 +157,7 @@ function createCalendar({
       state.currentDate.getMonth(),
       1
     );
+
     const shift = (first.getDay() + 6) % 7;
     const curr = new Date(first);
     curr.setDate(curr.getDate() - shift);
@@ -152,6 +181,7 @@ function createCalendar({
     date.getMonth() === state.currentDate.getMonth();
   const isToday = (date) => date.toDateString() === new Date().toDateString();
 
+  /*
   const markWeekends = () => {
     getWeeks()
       .flat()
@@ -159,22 +189,28 @@ function createCalendar({
         if (isWeekend(date)) state.selected.add(getDateKey(date));
       });
   };
+  */
 
-  const render = (selectedDays = state.selected) => {
+  const render = () => {
+    /*
     state.selected = new Set(
       [...selectedDays].map((d) => {
         if (d instanceof Date) return getDateKey(d);
-        return d;
+        return d; 
       })
     );
     markWeekends();
+    */
     const calendar = document.createElement("div");
     calendar.className = "calendar-container";
     if (showHeader) calendar.appendChild(createHeader());
     calendar.appendChild(createTable());
-    if (container.firstChild)
+
+    if (container.firstChild) {
       container.replaceChild(calendar, container.firstChild);
-    else container.appendChild(calendar);
+    } else {
+      container.appendChild(calendar);
+    }
   };
 
   const createHeader = () => {
@@ -191,10 +227,10 @@ function createCalendar({
     const nav = document.createElement("div");
     nav.className = "calendar-nav";
     const prev = document.createElement("button");
-    prev.innerHTML = "&lt;";
+    prev.innerHTML = "<";
     prev.addEventListener("click", () => navigate(-1));
     const next = document.createElement("button");
-    next.innerHTML = "&gt;";
+    next.innerHTML = ">";
     next.addEventListener("click", () => navigate(1));
     nav.append(prev, next);
     return nav;
@@ -212,6 +248,7 @@ function createCalendar({
     });
     thead.appendChild(headRow);
     table.appendChild(thead);
+
     const tbody = document.createElement("tbody");
     getWeeks().forEach((week) => {
       const row = document.createElement("tr");
@@ -219,28 +256,54 @@ function createCalendar({
       tbody.appendChild(row);
     });
     table.appendChild(tbody);
+
     return table;
   };
 
-  const createDayCell = (date, row) => {
+  function createDayCell(date, row) {
     const td = document.createElement("td");
     td.className = "calendar-day";
     td.textContent = date.getDate();
     td.dataset.date = getDateKey(date);
-    if (!isCurrentMonth(date)) td.classList.add("other-month");
-    if (isToday(date)) td.classList.add("today");
-    if (state.selected.has(getDateKey(date))) td.classList.add("selected");
-    if (!isWeekend(date))
-      td.addEventListener("click", () => handleDateClick(date));
+
+    if (!isCurrentMonth(date)) {
+      td.classList.add("other-month");
+    }
+
+    if (isToday(date)) {
+      td.classList.add("today");
+    }
+
+    const key = getDateKey(date);
+    const isWeekendDay = isWeekend(date);
+    const isNotWeekend = state.notWeekendsSet.has(key);
+
+    if (isWeekendDay && !isNotWeekend) {
+      td.classList.add("master-day");
+    } else if (state.masterDaysSet.has(key)) {
+      td.classList.add("master-day");
+    }
+
+    if (state.recordsDaysSet.has(key)) {
+      td.classList.add("recorded");
+    }
+
+    td.addEventListener("click", () => handleDateClick(date));
     row.appendChild(td);
-  };
+  }
 
   const handleDateClick = (date) => {
     const key = getDateKey(date);
-    if (state.selected.has(key)) state.selected.delete(key);
-    else state.selected.add(key);
-    if (onDateSelect) onDateSelect({ render, date, selected: state.selected });
-    render();
+
+    if (onDateSelect) {
+      onDateSelect({
+        render,
+        date,
+        masterDaysSet: state.masterDaysSet,
+        notWeekendsSet: state.notWeekendsSet,
+        isRecorded: state.recordsDaysSet.has(key),
+      });
+    }
   };
 
   const navigate = (delta) => {
@@ -251,11 +314,16 @@ function createCalendar({
   render();
 
   return {
+    /*
     getSelectedDates: () =>
       Array.from(state.selected).map((k) => {
         const [y, m, d] = k.split("-");
         return new Date(+y, +m - 1, +d);
       }),
+    */
+
+    getMasterDays: () => new Set(state.masterDaysSet),
+    getNotWeekends: () => new Set(state.notWeekendsSet),
     setDate: (date) => {
       state.currentDate = new Date(date);
       render();
