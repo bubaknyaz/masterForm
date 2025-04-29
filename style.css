@@ -2,7 +2,7 @@
   position: absolute;
   padding: 1%;
   font-family: "Roboto";
-  display: flex;
+  display: none;
   flex-direction: column;
   width: 900px;
   border: 2px solid black;
@@ -21,8 +21,8 @@
 
 .form__fields {
   display: flex;
-  max-height: 80vh;
   gap: 15px;
+  flex-wrap: wrap;
   justify-content: space-between;
 }
 
@@ -110,51 +110,6 @@
   font-size: 20px;
 }
 
-.day-editor {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.slots-container {
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-}
-
-.slot-block {
-  display: flex;
-  gap: 5px;
-}
-
-.slot-list {
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-}
-
-.slot-item {
-  cursor: pointer;
-  padding: 5px;
-  background: #e0e0e0;
-  border-radius: 4px;
-}
-
-.slot-item:hover {
-  background: #d0d0d0;
-}
-
-.slot-save__button,
-.slot-plus__button {
-  padding: 5px;
-  font-size: 14px;
-  width: 90%;
-}
-
-.slot-toggle {
-  accent-color: #2196f3;
-}
-
 @media (max-width: 1200px) {
   .formWrapper {
     width: 80%;
@@ -168,7 +123,6 @@
 
   .form__fields {
     align-items: stretch;
-    flex-direction: column;
   }
 
   .calendarContainer,
